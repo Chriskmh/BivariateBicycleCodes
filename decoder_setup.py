@@ -5,7 +5,7 @@ from bposd.css import css_code
 import pickle
 from scipy.sparse import coo_matrix
 from scipy.sparse import hstack
-
+from tqdm import tqdm
 
 # Takes as input a binary square matrix A
 # Returns the rank of A over the binary field F_2
@@ -33,7 +33,7 @@ def rank2(A):
 
 
 # depolarizing noise model 
-error_rate = 0.003
+error_rate = 0.001
 error_rate_init = error_rate
 error_rate_idle = error_rate
 error_rate_cnot = error_rate
@@ -52,7 +52,7 @@ sZ= [3, 5, 0, 1, 2, 4, 'idle']
 
 
 # number of syndrome measurement cycles 
-num_cycles = 12
+num_cycles = 6
 
 
 # Parameters of a Bivariate Bicycle (BB) code
@@ -65,9 +65,9 @@ num_cycles = 12
 # B = y^{b_1} + x^{b_2} + x^{b_3}
 
 # [[144,12,12]]
-ell,m = 12,6
-a1,a2,a3 = 3,1,2
-b1,b2,b3 = 3,1,2
+# ell,m = 12,6
+# a1,a2,a3 = 3,1,2
+# b1,b2,b3 = 3,1,2
 
 # [[784,24,24]]
 #ell,m = 28,14
@@ -75,15 +75,15 @@ b1,b2,b3 = 3,1,2
 #b1,b2,b3=7,9,20
 
 # [[72,12,6]]
-#ell,m = 6,6
-#a1,a2,a3=3,1,2
-#b1,b2,b3=3,1,2
+ell,m = 6,6
+a1,a2,a3=3,1,2
+b1,b2,b3=3,1,2
 
 
 # Ted's code [[90,8,10]]
-#ell,m = 15,3
-#a1,a2,a3 = 9,1,2
-#b1,b2,b3 = 0,2,7
+# ell,m = 15,3
+# a1,a2,a3 = 9,1,2
+# b1,b2,b3 = 0,2,7
 
 # [[108,8,10]]
 #ell,m = 9,6
@@ -91,9 +91,9 @@ b1,b2,b3 = 3,1,2
 #b1,b2,b3 = 3,1,2
 
 # [[288,12,18]]
-#ell,m = 12,12
-#a1,a2,a3 = 3,2,7
-#b1,b2,b3 = 3,1,2
+# ell,m = 12,12
+# a1,a2,a3 = 3,2,7
+# b1,b2,b3 = 3,1,2
 
 # code length
 n = 2*m*ell
@@ -514,7 +514,7 @@ HXdict  = {}
 # we add two noiseless syndrome cycles at the end
 print('Computing syndrome histories for single-X-type-fault circuits...')
 cnt = 0
-for circ in circuitsX:
+for circ in tqdm(circuitsX):
 	syndrome_history,state,syndrome_map,err_cnt = simulate_circuitX(circ+cycle+cycle)
 	assert(err_cnt==1)
 	assert(len(syndrome_history)==n2*(num_cycles+2))
@@ -572,7 +572,7 @@ HZdict  = {}
 
 print('Computing syndrome histories for single-Z-type-fault circuits...')
 cnt = 0
-for circ in circuitsZ:
+for circ in tqdm(circuitsZ):
 	syndrome_history,state,syndrome_map,err_cnt = simulate_circuitZ(circ+cycle+cycle)
 	assert(err_cnt==1)
 	assert(len(syndrome_history)==n2*(num_cycles+2))
