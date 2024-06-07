@@ -5,9 +5,10 @@ from bposd.css import css_code
 import pickle
 from scipy.sparse import coo_matrix
 from tqdm import tqdm
+from collections import Counter
 
 # number of Monte Carlo trials
-num_trials = 5
+num_trials = 10
 
 
 # code parameters and number of syndrome cycles
@@ -15,11 +16,11 @@ n = 90
 k = 8
 d = 10
 
-# cycs = [2,4,6]
-# err = [0.001, 0.004, 0.007, 0.01, 0.03]
+cycs = [2,4,6]
+err = [0.001, 0.004, 0.007, 0.01, 0.03]
 
-cycs = [2]
-err = [0.001]
+# cycs = [2,4,6]
+# err = [0.001]
 
 for num_cycles in cycs: 
     for error_rate in err:
@@ -131,7 +132,6 @@ for num_cycles in cycs:
                 
             # print("error_gate_cnt:", error_gate_cnt)  
             assert(len(error_gate_cnt) == 1)
-            # print("error_gate_cnt:", error_gate_cnt)
             
             values_HXdict = list(HXdict.values())
             mechanism_cnt = 0
@@ -145,9 +145,9 @@ for num_cycles in cycs:
         
         def generate_noisy_circuit(p):
             error_rate_meas = p
-            error_rate_idle = 0
-            error_rate_init = 0
-            error_rate_cnot = 0
+            error_rate_idle = p
+            error_rate_init = p
+            error_rate_cnot = p
             circ = []
             err_cnt=0
             gate_ind_cnt = 0
@@ -292,8 +292,8 @@ for num_cycles in cycs:
                         err_cnt+=1
                     circ.append(gate)
                     continue
-            print("error_mechanismX_cnt:", error_mechanismX_cnt, len(error_mechanismX_cnt))
-            print("error_mechanismZ_cnt:", error_mechanismZ_cnt, len(error_mechanismZ_cnt))
+            # print("error_mechanismX_cnt:", error_mechanismX_cnt, len(error_mechanismX_cnt))
+            # print("error_mechanismZ_cnt:", error_mechanismZ_cnt, len(error_mechanismZ_cnt))
             return circ, error_mechanismX_cnt, error_mechanismZ_cnt
 
 
@@ -435,26 +435,26 @@ for num_cycles in cycs:
 
 
         # begin decoding
-        bpdX=bposd_decoder(
-            HdecX,#the parity check matrix
-            channel_probs=channel_probsX, #assign error_rate to each qubit. This will override "error_rate" input variable
-            max_iter=my_max_iter, #the maximum number of iterations for BP)
-            bp_method=my_bp_method,
-            ms_scaling_factor=my_ms_scaling_factor, #min sum scaling factor. If set to zero the variable scaling factor method is used
-            osd_method=my_osd_method, #the OSD method. Choose from:  1) "osd_e", "osd_cs", "osd0"
-            osd_order=my_osd_order #the osd search depth
-            )
+        # bpdX=bposd_decoder(
+        #     HdecX,#the parity check matrix
+        #     channel_probs=channel_probsX, #assign error_rate to each qubit. This will override "error_rate" input variable
+        #     max_iter=my_max_iter, #the maximum number of iterations for BP)
+        #     bp_method=my_bp_method,
+        #     ms_scaling_factor=my_ms_scaling_factor, #min sum scaling factor. If set to zero the variable scaling factor method is used
+        #     osd_method=my_osd_method, #the OSD method. Choose from:  1) "osd_e", "osd_cs", "osd0"
+        #     osd_order=my_osd_order #the osd search depth
+        #     )
 
 
-        bpdZ=bposd_decoder(
-            HdecZ,#the parity check matrix
-            channel_probs=channel_probsZ, #assign error_rate to each qubit. This will override "error_rate" input variable
-            max_iter=my_max_iter, #the maximum number of iterations for BP)
-            bp_method=my_bp_method,
-            ms_scaling_factor=my_ms_scaling_factor, #min sum scaling factor. If set to zero the variable scaling factor method is used
-            osd_method="osd_cs", #the OSD method. Choose from:  1) "osd_e", "osd_cs", "osd0"
-            osd_order=my_osd_order #the osd search depth
-            )
+        # bpdZ=bposd_decoder(
+        #     HdecZ,#the parity check matrix
+        #     channel_probs=channel_probsZ, #assign error_rate to each qubit. This will override "error_rate" input variable
+        #     max_iter=my_max_iter, #the maximum number of iterations for BP)
+        #     bp_method=my_bp_method,
+        #     ms_scaling_factor=my_ms_scaling_factor, #min sum scaling factor. If set to zero the variable scaling factor method is used
+        #     osd_method="osd_cs", #the OSD method. Choose from:  1) "osd_e", "osd_cs", "osd0"
+        #     osd_order=my_osd_order #the osd search depth
+        #     )
 
         syndrome_hisX = []
         syndrome_hisZ = []
@@ -470,15 +470,18 @@ for num_cycles in cycs:
         bad_trials=0
         for trial in (range(num_trials)):
 
-            circ, error_mechanismX_cnt, error_mechanismZ_cnt = generate_noisy_circuit(0.5)
-            # error_mechanismX_cnt = np.array(error_mechanismX_cnt)
-            # error_mechanismX_cnt = np.unique(error_mechanismX_cnt).tolist()
+            circ, error_mechanismX_cnt, error_mechanismZ_cnt = generate_noisy_circuit(0.05)
+            
+            mechX_cnt = Counter(error_mechanismX_cnt)
+            filteredX = [elem for elem in mechX_cnt if mechX_cnt[elem] % 2 != 0]
+            error_mechanismX_cnt = np.unique(filteredX).tolist()
             errorX = np.zeros(HdecX.shape[-1]).astype(int)
             errorX[error_mechanismX_cnt] = 1
 
 
-            # error_mechanismZ_cnt = np.array(error_mechanismZ_cnt)
-            # error_mechanismZ_cnt = np.unique(error_mechanismZ_cnt).tolist()
+            mechZ_cnt = Counter(error_mechanismZ_cnt)
+            filteredZ = [elem for elem in mechZ_cnt if mechZ_cnt[elem] % 2 != 0]
+            error_mechanismZ_cnt = np.unique(filteredZ).tolist()
             errorZ = np.zeros(HdecZ.shape[-1]).astype(int)
             errorZ[error_mechanismZ_cnt] = 1
             
@@ -511,11 +514,9 @@ for num_cycles in cycs:
             syndrome_history%= 2
             assert(HdecZ.shape[0]==len(syndrome_history))
             
-            syndrome_history_augmented = np.hstack([syndrome_history,syndrome_final_logical])
-            supp = tuple(np.nonzero(syndrome_history_augmented)[0])
-            print("suppZ:", supp)
-            
             syndrome_real_historyZ = (HdecZ @ errorZ) % 2
+            
+            assert np.array_equal(syndrome_real_historyZ, syndrome_history)
             print('check errorZ syndrome:',np.array_equal(syndrome_real_historyZ, syndrome_history))
             
             
@@ -524,12 +525,11 @@ for num_cycles in cycs:
             stateZ.append(state)
             state_data_qubitsZ.append(state_data_qubits)
 
-            bpdZ.decode(syndrome_history)
-            low_weight_error = bpdZ.osdw_decoding
+            # bpdZ.decode(syndrome_history)
+            # low_weight_error = bpdZ.osdw_decoding
             
-            assert(len(low_weight_error)==HZ.shape[1])
+            # assert(len(low_weight_error)==HZ.shape[1])
             
-            print('predicted check errorZ :',np.array_equal(errorZ, low_weight_error))
             # syndrome_history_augmented_guessed = (HZ @ low_weight_error) % 2
             # syndrome_final_logical_guessed = syndrome_history_augmented_guessed[first_logical_rowZ:(first_logical_rowZ+k)]
             # ec_resultZ = np.array_equal(syndrome_final_logical_guessed,syndrome_final_logical)
@@ -551,12 +551,10 @@ for num_cycles in cycs:
                     syndrome_history[pos[row]]+= syndrome_history_copy[pos[row-1]]
             syndrome_history%= 2
             assert(HdecX.shape[0]==len(syndrome_history))
-
-            syndrome_history_augmented = np.hstack([syndrome_history,syndrome_final_logical])
-            supp = tuple(np.nonzero(syndrome_history_augmented)[0])
-            print("suppX:", supp)
             
             syndrome_real_historyX = (HdecX @ errorX) % 2
+            
+            assert np.array_equal(syndrome_real_historyX, syndrome_history)
             print('check errorX syndrome:',np.array_equal(syndrome_real_historyX, syndrome_history))
 
 
@@ -565,11 +563,10 @@ for num_cycles in cycs:
             stateX.append(state)
             state_data_qubitsX.append(state_data_qubits)
 
-            bpdX.decode(syndrome_history)
-            low_weight_error = bpdX.osdw_decoding
+            # bpdX.decode(syndrome_history)
+            # low_weight_error = bpdX.osdw_decoding
 
-            assert(len(low_weight_error)==HX.shape[1])
-            print('predicted check errorX :',np.array_equal(errorX, low_weight_error))
+            # assert(len(low_weight_error)==HX.shape[1])
             # syndrome_history_augmented_guessed = (HX @ low_weight_error) % 2
             # syndrome_final_logical_guessed = syndrome_history_augmented_guessed[first_logical_rowX:(first_logical_rowX+k)]
             # ec_resultX = np.array_equal(syndrome_final_logical_guessed,syndrome_final_logical)
