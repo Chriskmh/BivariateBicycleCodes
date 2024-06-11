@@ -1,23 +1,22 @@
 import numpy as np
 import itertools
 from ldpc import bposd_decoder
-from bposd.css import css_code
 import pickle
 from scipy.sparse import coo_matrix
 from tqdm import tqdm
 from collections import Counter
 
 # number of Monte Carlo trials
-num_trials = 10
+num_trials = 800
 
 
 # code parameters and number of syndrome cycles
-n = 90
-k = 8
-d = 10
+n = 72
+k = 12
+d = 6
 
 cycs = [2,4,6]
-err = [0.001, 0.004, 0.007, 0.01, 0.03]
+err = [0.001, 0.004, 0.007, 0.01]
 
 # cycs = [2,4,6]
 # err = [0.001]
@@ -27,7 +26,7 @@ for num_cycles in cycs:
 
 
         # load decoder data from file (must be created with decoder_setup.py)
-        title = './TMP/mydata_' + str(n) + '_' + str(k) + '_p_' + str(error_rate) + '_cycles_' + str(num_cycles) + '_test_HXdict'
+        title = './TMP/mydata_' + str(n) + '_' + str(k) + '_p_' + str(error_rate) + '_cycles_' + str(num_cycles) 
         print('reading data from file')
         print(title)
         with open(title, 'rb') as fp:
@@ -35,7 +34,7 @@ for num_cycles in cycs:
 
 
         # file to save simulation results
-        fname = './CORRECTION/data_' + str(n) + '_' + str(k) + '_p_' + str(error_rate) + '_cycles_' + str(num_cycles) + '_trials_' + str(num_trials) + '_test'
+        fname = './CORRECTION/data_' + str(n) + '_' + str(k) + '_p_' + str(error_rate) + '_cycles_' + str(num_cycles) + '_trials_' + str(num_trials) 
 
 
         # format of the result file
@@ -47,30 +46,30 @@ for num_cycles in cycs:
 
         HdecX = mydata['HdecX']
         HdecZ = mydata['HdecZ']
-        channel_probsX = mydata['probX']
-        channel_probsZ = mydata['probZ']
+        # channel_probsX = mydata['probX']
+        # channel_probsZ = mydata['probZ']
         lin_order = mydata['lin_order']
         assert(mydata['num_cycles']==num_cycles)
         data_qubits = mydata['data_qubits']
         Xchecks=mydata['Xchecks']
         Zchecks=mydata['Zchecks']
         cycle = mydata['cycle']
-        HX = mydata['HX']
-        HZ = mydata['HZ']
+        # HX = mydata['HX']
+        # HZ = mydata['HZ']
         lx = mydata['lx']
         lz = mydata['lz']
-        first_logical_rowZ=mydata['first_logical_rowZ']
-        first_logical_rowX=mydata['first_logical_rowX']
+        # first_logical_rowZ=mydata['first_logical_rowZ']
+        # first_logical_rowX=mydata['first_logical_rowX']
         ell=mydata['ell']
         m=mydata['m']
-        a1=mydata['a1']
-        a2=mydata['a2']
-        a3=mydata['a3']
-        b1=mydata['b1']
-        b2=mydata['b2']
-        b3=mydata['b3']
-        sX=mydata['sX']
-        sZ=mydata['sZ']
+        # a1=mydata['a1']
+        # a2=mydata['a2']
+        # a3=mydata['a3']
+        # b1=mydata['b1']
+        # b2=mydata['b2']
+        # b3=mydata['b3']
+        # sX=mydata['sX']
+        # sZ=mydata['sZ']
         HXdict = mydata['HXdict']
         HZdict = mydata['HZdict']
         circuitsZ = mydata['circuitsZ']
@@ -434,44 +433,24 @@ for num_cycles in cycs:
 
 
 
-        # begin decoding
-        # bpdX=bposd_decoder(
-        #     HdecX,#the parity check matrix
-        #     channel_probs=channel_probsX, #assign error_rate to each qubit. This will override "error_rate" input variable
-        #     max_iter=my_max_iter, #the maximum number of iterations for BP)
-        #     bp_method=my_bp_method,
-        #     ms_scaling_factor=my_ms_scaling_factor, #min sum scaling factor. If set to zero the variable scaling factor method is used
-        #     osd_method=my_osd_method, #the OSD method. Choose from:  1) "osd_e", "osd_cs", "osd0"
-        #     osd_order=my_osd_order #the osd search depth
-        #     )
 
-
-        # bpdZ=bposd_decoder(
-        #     HdecZ,#the parity check matrix
-        #     channel_probs=channel_probsZ, #assign error_rate to each qubit. This will override "error_rate" input variable
-        #     max_iter=my_max_iter, #the maximum number of iterations for BP)
-        #     bp_method=my_bp_method,
-        #     ms_scaling_factor=my_ms_scaling_factor, #min sum scaling factor. If set to zero the variable scaling factor method is used
-        #     osd_method="osd_cs", #the OSD method. Choose from:  1) "osd_e", "osd_cs", "osd0"
-        #     osd_order=my_osd_order #the osd search depth
-        #     )
-
-        syndrome_hisX = []
-        syndrome_hisZ = []
-        syndrome_logicalX = []
-        syndrome_logicalZ = []
-        stateX = []
-        stateZ = []
-        state_data_qubitsX = []
-        state_data_qubitsZ = []
+        syndrome_final_logicalX = []
+        syndrome_final_logicalZ = []
+        syndrome_historyX = []
+        syndrome_historyZ = []
+        errorXs = []
+        errorZs = []
+        stateXs = []
+        stateZs = []
   
   
         good_trials=0
         bad_trials=0
         for trial in (range(num_trials)):
 
-            circ, error_mechanismX_cnt, error_mechanismZ_cnt = generate_noisy_circuit(0.05)
+            circ, error_mechanismX_cnt, error_mechanismZ_cnt = generate_noisy_circuit(error_rate)
             
+            # Count errors occuring even or odd times
             mechX_cnt = Counter(error_mechanismX_cnt)
             filteredX = [elem for elem in mechX_cnt if mechX_cnt[elem] % 2 != 0]
             error_mechanismX_cnt = np.unique(filteredX).tolist()
@@ -485,18 +464,10 @@ for num_cycles in cycs:
             errorZ = np.zeros(HdecZ.shape[-1]).astype(int)
             errorZ[error_mechanismZ_cnt] = 1
             
-            # error correction result
-            # True = success
-            # False = fail
-            ec_resultZ = False
-            ec_resultX = False
             
             # correct Z errors 
             syndrome_history,state,syndrome_map,err_cntZ = simulate_circuitZ(circ+cycle+cycle)
-            # print(syndrome_history, syndrome_history.shape)
-            # print(state, state.shape)
 
-            
             assert(len(syndrome_history)==n2*(num_cycles+2))
             state_data_qubits = [state[lin_order[q]] for q in data_qubits]
             #	desired syndrome  
@@ -516,26 +487,18 @@ for num_cycles in cycs:
             
             syndrome_real_historyZ = (HdecZ @ errorZ) % 2
             
-            assert np.array_equal(syndrome_real_historyZ, syndrome_history)
-            print('check errorZ syndrome:',np.array_equal(syndrome_real_historyZ, syndrome_history))
+            assert np.array_equal(syndrome_real_historyZ, syndrome_history)            
             
-            
-            syndrome_hisZ.append(syndrome_history)
-            syndrome_logicalZ.append(syndrome_final_logical)
-            stateZ.append(state)
-            state_data_qubitsZ.append(state_data_qubits)
+            syndrome_historyZ.append(syndrome_history)
+            errorZs.append(errorZ)
+            syndrome_final_logicalZ.append(syndrome_final_logical)
+            stateZs.append(state)
 
-            # bpdZ.decode(syndrome_history)
-            # low_weight_error = bpdZ.osdw_decoding
-            
-            # assert(len(low_weight_error)==HZ.shape[1])
-            
             # syndrome_history_augmented_guessed = (HZ @ low_weight_error) % 2
             # syndrome_final_logical_guessed = syndrome_history_augmented_guessed[first_logical_rowZ:(first_logical_rowZ+k)]
             # ec_resultZ = np.array_equal(syndrome_final_logical_guessed,syndrome_final_logical)
             
-            # if ec_resultZ:
-                # correct X errors 
+            # correct X errors 
             syndrome_history,state,syndrome_map,err_cntX = simulate_circuitX(circ+cycle+cycle)   
             assert(len(syndrome_history)==n2*(num_cycles+2))
             state_data_qubits = [state[lin_order[q]] for q in data_qubits]
@@ -555,13 +518,11 @@ for num_cycles in cycs:
             syndrome_real_historyX = (HdecX @ errorX) % 2
             
             assert np.array_equal(syndrome_real_historyX, syndrome_history)
-            print('check errorX syndrome:',np.array_equal(syndrome_real_historyX, syndrome_history))
 
-
-            syndrome_logicalX.append(syndrome_final_logical)
-            syndrome_hisX.append(syndrome_history)
-            stateX.append(state)
-            state_data_qubitsX.append(state_data_qubits)
+            syndrome_historyX.append(syndrome_history)
+            errorXs.append(errorX)
+            syndrome_final_logicalX.append(syndrome_final_logical)
+            stateXs.append(state)
 
             # bpdX.decode(syndrome_history)
             # low_weight_error = bpdX.osdw_decoding
@@ -570,36 +531,20 @@ for num_cycles in cycs:
             # syndrome_history_augmented_guessed = (HX @ low_weight_error) % 2
             # syndrome_final_logical_guessed = syndrome_history_augmented_guessed[first_logical_rowX:(first_logical_rowX+k)]
             # ec_resultX = np.array_equal(syndrome_final_logical_guessed,syndrome_final_logical)
-                
-            print('\n')
 
-        # 	if ec_resultZ and ec_resultX:
-        # 		good_trials+=1
-        # 	else:
-        # 		bad_trials+=1
-                
-        # 	assert((trial+1)==(good_trials+bad_trials))
 
-        # 	print(str(error_rate) + '\t' + str(num_cycles) + '\t' + str(trial+1) + '\t' + str(bad_trials))
-            
+        correction_data = {}
+        correction_data['syndrome_historyX'] = syndrome_historyX
+        correction_data['syndrome_historyZ'] = syndrome_historyZ
+        correction_data['errorXs'] = errorXs
+        correction_data['errorZs'] = errorZs
+        correction_data['syndrome_final_logicalX'] = syndrome_final_logicalX
+        correction_data['syndrome_final_logicalZ'] = syndrome_final_logicalZ
+        correction_data['stateXs'] = stateXs
+        correction_data['stateZs'] = stateZs
 
-        # assert(num_trials==(good_trials+bad_trials))
-
-        # print(str(error_rate) + '\t' + str(num_cycles) + '\t' + str(num_trials) + '\t' + str(bad_trials),file=open(fname,'a'))
-
-        data = {}
-        data['syndrome_hisX'] = syndrome_hisX
-        data['syndrome_hisZ'] = syndrome_hisZ
-        data['syndrome_logicalX'] = syndrome_logicalX
-        data['syndrome_logicalZ'] = syndrome_logicalZ
-        data['stateX'] = stateX
-        data['stateZ'] = stateZ
-        data['state_data_qubitsX'] = state_data_qubitsX
-        data['state_data_qubitsZ'] = state_data_qubitsZ
-  
-  
-        # print('saving data to ',fname)
-        # with open(fname, 'wb') as fp:
-        # 	pickle.dump(data, fp)
+        print('saving data to ',fname)
+        with open(fname, 'wb') as fp:
+            pickle.dump(correction_data, fp)
 
         print('Done')
